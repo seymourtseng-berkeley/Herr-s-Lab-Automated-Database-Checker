@@ -6,6 +6,7 @@ subprocess.call([sys.executable, "-m", "pip", "install", 'XlsxWriter'])
 subprocess.call([sys.executable, "-m", "pip", "install", 'py3-validate-email'])
 
 
+import os
 import xlrd as xread
 import xlsxwriter as xwrite
 from Classes import Person, Department
@@ -14,12 +15,13 @@ from Classes import Person, Department
 def init():
 
     # opening database file
-    loc = ('database.xlsx')
+    loc = os.path.join(sys.path[0], 'database.xlsx')
     try:
         database_wb = xread.open_workbook(loc)
         sheets = [database_wb.sheet_by_index(i) for i in range(database_wb.nsheets)]
     except:
-        print("Error: No Excel Sheet Named 'database.xlsx' Found :( ")
+        print("\n" + "Error: No Excel Sheet Named 'database.xlsx' Found :( ")
+        input("Please paste the database sheet into this folder, and run the script again!")
 
     # creating diagnostic sheets
     diagnostic_wb = xwrite.Workbook('Actions Needed.xlsx')
@@ -27,6 +29,7 @@ def init():
     email_sheet = diagnostic_wb.add_worksheet('Fix Broken Emails')
     status_sheet = diagnostic_wb.add_worksheet('Remove Inactive Faculty')
     date_sheet = diagnostic_wb.add_worksheet('Renew Outdated Entries')
+    duplicates_sheet = diagnostic_wb.add_worksheet('Revise Duplicates')
 
     # sheet formats
     bold = diagnostic_wb.add_format({'bold': True, 'font_color': 'red'})
@@ -37,19 +40,30 @@ def init():
     # PERFORMING DIAGNOSTICS
     # ///////////////////////////////////////////////////////////////
     # checking websites
-    # check_websites(people, website_sheet, bold)
+    website_tasks = check_websites(people, website_sheet, bold)
     # checking email
-    check_email(people, email_sheet, bold)
+    email_tasks = check_email(people, email_sheet, bold)
     # checking status
-    check_status(people, status_sheet, bold)
+    status_tasks = check_status(people, status_sheet, bold)
     # checking date modified
-    check_date(people, date_sheet, bold)
+    date_tasks = check_date(people, date_sheet, bold)
+    # checking duplicates
+    duplicates_tasks = check_duplicates(people, duplicates_sheet, bold)
     # ///////////////////////////////////////////////////////////////
 
     diagnostic_wb.close()
 
+    # printing diagnostic result
+    print("\n" + "ACTIONS NEEDED:" + "\n" + "" + "\n"
+          + "Website Tasks = " + str(website_tasks) + "\n"
+          + "Email Tasks = " + str(email_tasks) + "\n"
+          + "Status Tasks = " + str(status_tasks) + "\n"
+          + "Date Tasks = " + str(date_tasks) + "\n"
+          + "Duplicates Tasks = " + str(duplicates_tasks) + "\n" + "" + "\n"
+          + "(Please see the 'Actions Needed.xlsx' sheet for details)" + "\n")
+
     # exit
-    input("\n" + "Completed! You may close the window now...")
+    input("\n" + "Completed! Press any key to exit... ")
     exit()
 
 
@@ -129,9 +143,12 @@ def check_websites(departments, website_sheet, style, any_false=[], i=0):
                 any_false.append(False)
             except:
                 pass
-            
+
     if all(any_false):
         print("\n" + "Congrats, All websites are working! ")
+        return 0
+
+    return i - len(departments)
 
 
 from validate_email import validate_email
@@ -159,6 +176,9 @@ def check_email(departments, email_sheet, style, any_false=[], i=0):
 
     if all(any_false):
         print("\n" + "Congrats, All emails are valid! ")
+        return
+
+    return i - len(departments)
 
 
 def check_status(departments, status_sheet, style, any_false=[], i=0):
@@ -179,6 +199,9 @@ def check_status(departments, status_sheet, style, any_false=[], i=0):
 
     if all(any_false):
         print("\n" + "Congrats, All faculty members are active! ")
+        return 0
+
+    return i - len(departments)
 
 
 from datetime import datetime
@@ -214,6 +237,35 @@ def check_date(departments, date_sheet, style, any_false=[], i=0, semester=183):
 
     if all(any_false):
         print("\n" + "Congrats, All people are up-to-date! ")
+        return 0
+
+    return i - len(departments)
+
+
+def check_duplicates(departments, duplicates_sheet, style, any_false=[], i=0):
+
+    # status
+    print("\n" + "Checking duplicates...")
+
+    for department in departments:
+        duplicates_sheet.write(i, 0, department.name, style)
+        i += 1
+
+        unique_persons = {}
+        for person in department.people:
+            if person.name not in unique_persons:
+                unique_persons[person.name] = 1
+            else:
+                print("Duplicated Entry: " + person.name)
+                duplicates_sheet.write(i, 0, person.name)
+                i += 1
+                any_false.append(False)
+
+    if all(any_false):
+        print("\n" + "Congrats, All people are up-to-date! ")
+        return 0
+
+    return i - len(departments)
 
 
 init()

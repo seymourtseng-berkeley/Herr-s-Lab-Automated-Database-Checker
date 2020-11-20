@@ -15,16 +15,17 @@ from Classes import Person, Department
 def init():
 
     # opening database file
-    loc = os.path.join(sys.path[0], 'database.xlsx')
+    database_loc = os.path.join(sys.path[0], 'database.xlsx')
     try:
-        database_wb = xread.open_workbook(loc)
+        database_wb = xread.open_workbook(database_loc)
         sheets = [database_wb.sheet_by_index(i) for i in range(database_wb.nsheets)]
     except:
         print("\n" + "Error: No Excel Sheet Named 'database.xlsx' Found :( ")
         input("Please paste the database sheet into this folder, and run the script again!")
 
     # creating diagnostic sheets
-    diagnostic_wb = xwrite.Workbook('Actions Needed.xlsx')
+    diagnostic_loc = os.path.join(sys.path[0], 'Actions Needed.xlsx')
+    diagnostic_wb = xwrite.Workbook(diagnostic_loc)
     website_sheet = diagnostic_wb.add_worksheet('Update Invalid Websites')
     email_sheet = diagnostic_wb.add_worksheet('Fix Broken Emails')
     status_sheet = diagnostic_wb.add_worksheet('Remove Inactive Faculty')
@@ -50,7 +51,6 @@ def init():
     # checking duplicates
     duplicates_tasks = check_duplicates(people, duplicates_sheet, bold)
     # ///////////////////////////////////////////////////////////////
-
     diagnostic_wb.close()
 
     # printing diagnostic result
@@ -224,13 +224,19 @@ def check_date(departments, date_sheet, style, any_false=[], i=0, semester=183):
                 any_false.append(False)
 
             else:
-                calculate = lambda d1, d2: abs((d1 - d2).days)
-                today = datetime.today()
-                last_date = xread.xldate_as_datetime(person.date_modified, 0)
-                period = calculate(today, last_date)
+                try:
+                    calculate = lambda d1, d2: abs((d1 - d2).days)
+                    today = datetime.today()
+                    last_date = xread.xldate_as_datetime(person.date_modified, 0)
+                    period = calculate(today, last_date)
 
-                if period > semester:
-                    print("Outdated Entry: " + person.name)
+                    if period > semester:
+                        print("Outdated Entry: " + person.name)
+                        date_sheet.write(i, 0, person.name)
+                        i += 1
+                        any_false.append(False)
+                except:
+                    print("Invalid Entry: " + person.name)
                     date_sheet.write(i, 0, person.name)
                     i += 1
                     any_false.append(False)

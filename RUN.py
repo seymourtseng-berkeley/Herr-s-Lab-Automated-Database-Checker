@@ -190,7 +190,7 @@ def check_status(departments, status_sheet, style, any_false=[], i=0):
         status_sheet.write(i, 0, department.name, style)
         i += 1
         for person in department.people:
-            non_active = ['Inactive', 'Unsure', 'Transferred', '']
+            non_active = ['Inactive', 'Unsure', 'Transferred']
             if person.status in non_active:
                 print("Inactive Status: " + person.name)
                 status_sheet.write(i, 0, person.name)

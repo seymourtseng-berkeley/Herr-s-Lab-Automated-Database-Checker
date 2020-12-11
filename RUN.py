@@ -36,22 +36,26 @@ def init():
     bold = diagnostic_wb.add_format({'bold': True, 'font_color': 'red'})
 
     # turning database into data
-    people = make_person(sheets)
+    departments, num_faculty = make_person(sheets)
 
     # PERFORMING DIAGNOSTICS
     # ///////////////////////////////////////////////////////////////
     # checking websites
-    website_tasks = check_websites(people, website_sheet, bold)
+    website_tasks = check_websites(departments, website_sheet, bold)
     # checking email
-    email_tasks = check_email(people, email_sheet, bold)
+    email_tasks = check_email(departments, email_sheet, bold)
     # checking status
-    status_tasks = check_status(people, status_sheet, bold)
+    status_tasks = check_status(departments, status_sheet, bold)
     # checking date modified
-    date_tasks = check_date(people, date_sheet, bold)
+    date_tasks = check_date(departments, date_sheet, bold)
     # checking duplicates
-    duplicates_tasks = check_duplicates(people, duplicates_sheet, bold)
+    duplicates_tasks = check_duplicates(departments, duplicates_sheet, bold)
     # ///////////////////////////////////////////////////////////////
     diagnostic_wb.close()
+
+    # calculating percentage of update
+    total_tasks = email_tasks + status_tasks + date_tasks + duplicates_tasks
+    percentage = 100 * (1 - round(total_tasks / num_faculty, 4))
 
     # printing diagnostic result
     print("\n" + "ACTIONS NEEDED:" + "\n" + "" + "\n"
@@ -60,7 +64,8 @@ def init():
           + "Status Tasks = " + str(status_tasks) + "\n"
           + "Date Tasks = " + str(date_tasks) + "\n"
           + "Duplicates Tasks = " + str(duplicates_tasks) + "\n" + "" + "\n"
-          + "(Please see the 'Actions Needed.xlsx' sheet for details)" + "\n")
+          + "(Please see the 'Actions Needed.xlsx' sheet for details)" + "\n" + "" + "\n"
+          + "Database " + str(percentage) + "% Updated." + "\n")
 
     # exit
     input("\n" + "Completed! Press any key to exit... ")
@@ -74,6 +79,7 @@ def make_person(sheets):
 
     # list that stores people
     departments = []
+    num_faculty = 0
 
     for sheet in sheets:
 
@@ -103,11 +109,12 @@ def make_person(sheets):
 
         new_department = Department(sheet.name, people)
         departments.append(new_department)
+        num_faculty += len(people)
 
         # status
         print(new_department.name + "|| completed")
 
-    return departments
+    return departments, num_faculty
 
 
 from urllib.request import urlopen

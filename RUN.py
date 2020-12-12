@@ -173,7 +173,7 @@ def check_email(departments, email_sheet, style, any_false=[], i=0):
         for person in department.people:
             try:
                 is_valid = validate_email(person.email, check_regex=True, check_mx=False)
-                if is_valid is False:
+                if is_valid is False and person.email != "n/a":
                     print("Email Error: " + person.name)
                     email_sheet.write(i, 0, person.name)
                     i += 1
@@ -214,7 +214,7 @@ def check_status(departments, status_sheet, style, any_false=[], i=0):
 from datetime import datetime
 
 
-def check_date(departments, date_sheet, style, any_false=[], i=0, semester=183):
+def check_date(departments, date_sheet, style, any_false=[], i=0, year=365):
 
     # status
     print("\n" + "Checking dates...")
@@ -237,7 +237,7 @@ def check_date(departments, date_sheet, style, any_false=[], i=0, semester=183):
                     last_date = xread.xldate_as_datetime(person.date_modified, 0)
                     period = calculate(today, last_date)
 
-                    if period > semester:
+                    if period > year:
                         print("Outdated Entry: " + person.name)
                         date_sheet.write(i, 0, person.name)
                         i += 1

@@ -54,7 +54,7 @@ def init():
     diagnostic_wb.close()
 
     # calculating percentage of update
-    total_tasks = email_tasks + status_tasks + date_tasks + duplicates_tasks
+    total_tasks = website_tasks + email_tasks + status_tasks + date_tasks + duplicates_tasks
     percentage = 100 * (1 - round(total_tasks / num_faculty, 4))
 
     # printing diagnostic result
@@ -124,7 +124,9 @@ from urllib.error import HTTPError, URLError
 def check_websites(departments, website_sheet, style, any_false=[], i=0):
 
     # status
-    print("\n" + "Checking Websites...")
+    print("\n" + "Checking Websites..." + "\n" + "" + "\n"
+          + "This will take a while, " + "\n"
+          + "Please do not press any key during this process!" + "\n")
 
     # check if a website is valid
     for department in departments:
@@ -144,10 +146,11 @@ def check_websites(departments, website_sheet, style, any_false=[], i=0):
                     i += 1
                     any_false.append(False)
             except URLError as e:
-                print("Webpage Error: " + person.name + " || " + str(e.args) + "url")
-                website_sheet.write(i, 0, person.name)
-                i += 1
-                any_false.append(False)
+                if "[SSL: CERTIFICATE_VERIFY_FAILED]" not in str(e.args):
+                    print("Webpage Error: " + person.name + " || " + str(e.args) + "url")
+                    website_sheet.write(i, 0, person.name)
+                    i += 1
+                    any_false.append(False)
             except:
                 pass
 
@@ -171,19 +174,20 @@ def check_email(departments, email_sheet, style, any_false=[], i=0):
         email_sheet.write(i, 0, department.name, style)
         i += 1
         for person in department.people:
-            try:
-                is_valid = validate_email(person.email, check_regex=True, check_mx=False)
-                if is_valid is False and person.email != "n/a":
-                    print("Email Error: " + person.name)
-                    email_sheet.write(i, 0, person.name)
-                    i += 1
-                    any_false.append(is_valid)
-            except:
-                pass
+            if person.email != "n/a":
+                try:
+                    is_valid = validate_email(person.email, check_regex=True, check_mx=False)
+                    if is_valid is False:
+                        print("Email Error: " + person.name)
+                        email_sheet.write(i, 0, person.name)
+                        i += 1
+                        any_false.append(is_valid)
+                except:
+                    pass
 
     if all(any_false):
         print("\n" + "Congrats, All emails are valid! ")
-        return
+        return 0
 
     return i - len(departments)
 

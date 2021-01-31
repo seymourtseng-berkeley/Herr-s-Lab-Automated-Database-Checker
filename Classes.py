@@ -12,6 +12,9 @@ class Person:
         self.urm = urm
         self.date_modified = date_modified
         self.status = status
+        self.all_attributes = [last_name, first_name, institution, program,
+                               position, knowledge, email, website, gender,
+                               urm, date_modified, status]
 
 
 class Department:

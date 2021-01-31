@@ -1,24 +1,23 @@
 import subprocess
 import sys
+
 # This uses system terminal to install python modules
-subprocess.call([sys.executable, "-m", "pip", "install", 'xlrd'])
 subprocess.call([sys.executable, "-m", "pip", "install", 'XlsxWriter'])
 subprocess.call([sys.executable, "-m", "pip", "install", 'py3-validate-email'])
-
+subprocess.call([sys.executable, "-m", "pip", "install", 'openpyxl'])
 
 import os
-import xlrd as xread
 import xlsxwriter as xwrite
+import openpyxl as pyxl
 from Classes import Person, Department
 
 
 def init():
-
     # opening database file
     database_loc = os.path.join(sys.path[0], 'database.xlsx')
     try:
-        database_wb = xread.open_workbook(database_loc)
-        sheets = [database_wb.sheet_by_index(i) for i in range(database_wb.nsheets)]
+        database_wb = pyxl.load_workbook(database_loc)
+        sheets = database_wb
     except:
         print("\n" + "Error: No Excel Sheet Named 'database.xlsx' Found :( ")
         input("Please paste the database sheet into this folder, and run the script again!")
@@ -31,6 +30,7 @@ def init():
     status_sheet = diagnostic_wb.add_worksheet('Remove Inactive Faculty')
     date_sheet = diagnostic_wb.add_worksheet('Renew Outdated Entries')
     duplicates_sheet = diagnostic_wb.add_worksheet('Revise Duplicates')
+    missing_info_sheet = diagnostic_wb.add_worksheet('Fill-in Missing Information')
 
     # sheet formats
     bold = diagnostic_wb.add_format({'bold': True, 'font_color': 'red'})
@@ -50,11 +50,13 @@ def init():
     date_tasks = check_date(departments, date_sheet, bold)
     # checking duplicates
     duplicates_tasks = check_duplicates(departments, duplicates_sheet, bold)
+    # checking missing information
+    missing_info_tasks = check_missing_info(departments, missing_info_sheet, bold)
     # ///////////////////////////////////////////////////////////////
     diagnostic_wb.close()
 
     # calculating percentage of update
-    total_tasks = website_tasks + email_tasks + status_tasks + date_tasks + duplicates_tasks
+    total_tasks = website_tasks + email_tasks + status_tasks + date_tasks + duplicates_tasks + missing_info_tasks
     percentage = 100 * (1 - round(total_tasks / num_faculty, 4))
 
     # printing diagnostic result
@@ -63,7 +65,8 @@ def init():
           + "Email Tasks = " + str(email_tasks) + "\n"
           + "Status Tasks = " + str(status_tasks) + "\n"
           + "Date Tasks = " + str(date_tasks) + "\n"
-          + "Duplicates Tasks = " + str(duplicates_tasks) + "\n" + "" + "\n"
+          + "Duplicates Tasks = " + str(duplicates_tasks) + "\n"
+          + "Missing Info Tasks = " + str(missing_info_tasks) + "\n" + "" + "\n"
           + "(Please see the 'Actions Needed.xlsx' sheet for details)" + "\n" + "" + "\n"
           + "Database " + str(percentage) + "% Updated." + "\n")
 
@@ -73,6 +76,9 @@ def init():
 
 
 def make_person(sheets):
+    """Returns a list and an integer, where
+    list: Department objects, which each has a list of Person objects;
+    integer: the total number of faculty members"""
 
     # status
     print("\n" + "Making People...")
@@ -84,21 +90,22 @@ def make_person(sheets):
     for sheet in sheets:
 
         people = []
-        for i in range(1, sheet.nrows):
-            if sheet.cell_value(i, 0) != "":
-
-                last_name = sheet.cell_value(i, 0)
-                first_name = sheet.cell_value(i, 1)
-                institution = sheet.cell_value(i, 2)
-                program = sheet.cell_value(i, 3)
-                position = sheet.cell_value(i, 4)
-                knowledge = sheet.cell_value(i, 5)
-                email = sheet.cell_value(i, 6)
-                website = sheet.cell_value(i, 7)
-                gender = sheet.cell_value(i, 8)
-                urm = sheet.cell_value(i, 9)
-                date_modified = sheet.cell_value(i, 10)
-                status = sheet.cell_value(i, 11)
+        # openpyxl uses excel number conventions (starts from 1)
+        for i in range(2, get_max_row(sheet)):
+            print(get_max_row(sheet))
+            if sheet.cell(i, 1) != "":
+                last_name = sheet.cell(i, 1).value
+                first_name = sheet.cell(i, 2).value
+                institution = sheet.cell(i, 3).value
+                program = sheet.cell(i, 4).value
+                position = sheet.cell(i, 5).value
+                knowledge = sheet.cell(i, 6).value
+                email = sheet.cell(i, 7).value
+                website = sheet.cell(i, 8).value
+                gender = sheet.cell(i, 9).value
+                urm = sheet.cell(i, 10).value
+                date_modified = sheet.cell(i, 11).value
+                status = sheet.cell(i, 12).value
 
                 new_person = Person(last_name, first_name, institution, program,
                                     position, knowledge, email, website, gender, urm, date_modified, status)
@@ -107,7 +114,7 @@ def make_person(sheets):
                 # status
                 print(new_person.name + "|| completed")
 
-        new_department = Department(sheet.name, people)
+        new_department = Department(sheet.title, people)
         departments.append(new_department)
         num_faculty += len(people)
 
@@ -122,6 +129,7 @@ from urllib.error import HTTPError, URLError
 
 
 def check_websites(departments, website_sheet, style, any_false=[], i=0):
+    """Returns an integer: the number of inaccessible websites"""
 
     # status
     print("\n" + "Checking Websites..." + "\n" + "" + "\n"
@@ -165,6 +173,7 @@ from validate_email import validate_email
 
 
 def check_email(departments, email_sheet, style, any_false=[], i=0):
+    """Returns an integer: the number of invalid email addresses"""
 
     # status
     print("\n" + "Checking emails...")
@@ -193,6 +202,7 @@ def check_email(departments, email_sheet, style, any_false=[], i=0):
 
 
 def check_status(departments, status_sheet, style, any_false=[], i=0):
+    """Returns an integer: the number of inactive faculty members"""
 
     # status
     print("\n" + "Checking status...")
@@ -219,6 +229,7 @@ from datetime import datetime
 
 
 def check_date(departments, date_sheet, style, any_false=[], i=0, year=365):
+    """Returns an integer: the number of outdated faculty members"""
 
     # status
     print("\n" + "Checking dates...")
@@ -238,7 +249,7 @@ def check_date(departments, date_sheet, style, any_false=[], i=0, year=365):
                 try:
                     calculate = lambda d1, d2: abs((d1 - d2).days)
                     today = datetime.today()
-                    last_date = xread.xldate_as_datetime(person.date_modified, 0)
+                    last_date = person.date_modified
                     period = calculate(today, last_date)
 
                     if period > year:
@@ -260,6 +271,7 @@ def check_date(departments, date_sheet, style, any_false=[], i=0, year=365):
 
 
 def check_duplicates(departments, duplicates_sheet, style, any_false=[], i=0):
+    """Returns an integer: the number of duplicates within departments"""
 
     # status
     print("\n" + "Checking duplicates...")
@@ -285,33 +297,54 @@ def check_duplicates(departments, duplicates_sheet, style, any_false=[], i=0):
     return i - len(departments)
 
 
+def check_missing_info(departments, missing_info_sheet, style, any_false=[], i=0):
+    """Returns an integer: the number of faculty member with missing information"""
+
+    # status
+    print("\n" + "Checking missing information...")
+
+    for department in departments:
+        missing_info_sheet.write(i, 0, department.name, style)
+        i += 1
+
+        for person in department.people:
+            has_missing_info = False
+            for attribute in person.all_attributes:
+                if attribute is None:
+                    has_missing_info = True
+                    break
+            if has_missing_info:
+                missing_info_sheet.write(i, 0, person.name)
+                print("Missing Information: " + person.name)
+                any_false.append(False)
+                i += 1
+
+    if all(any_false):
+        print("\n" + "Congrats, All people have information! ")
+        return 0
+
+    return i - len(departments)
+
+
+# Helper Functions
+
+
+def get_max_row(sheet):
+    """Returns an integer: the number of rows in sheet"""
+
+    empty_rows = 0
+    max_row = 0
+
+    while empty_rows < 10:
+        max_row += 1
+        if sheet.cell(max_row, 1).value == "" or sheet.cell(max_row, 1).value is None:
+            empty_rows += 1
+        else:
+            empty_rows = 0
+
+    max_row -= 10
+
+    return max_row
+
+
 init()
-
-# Miscellaneous Functions
-
-
-def keyword_search(keywords, people):
-
-    # keyword search
-    for person in people:
-        if keywords in person.knowledge:
-            print(person.name)
-
-
-def university_search(unviersity, people):
-
-    # university search
-    for person in people:
-        if unviersity in person.institution:
-            print(person.name)
-
-
-def urm_search(people):
-
-    # urm search
-    for person in people:
-        if person.urm == 'URM' and person.gender == 'Female':
-            print(person.name)
-
-
-

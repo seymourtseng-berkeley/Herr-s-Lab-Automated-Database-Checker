@@ -92,7 +92,7 @@ def make_person(sheets):
         people = []
         # openpyxl uses excel number conventions (starts from 1)
         for i in range(2, get_max_row(sheet)):
-            print(get_max_row(sheet))
+
             if sheet.cell(i, 1) != "":
                 last_name = sheet.cell(i, 1).value
                 first_name = sheet.cell(i, 2).value
